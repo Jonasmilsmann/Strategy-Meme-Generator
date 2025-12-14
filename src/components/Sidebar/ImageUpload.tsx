@@ -2,13 +2,11 @@ import React, { useRef, useState } from 'react';
 import { fabric } from 'fabric';
 import { FaUpload, FaImage } from 'react-icons/fa';
 import { useMeme } from '../../contexts/MemeContext';
-import { useAuth } from '../../contexts/AuthContext';
 // Image upload now handled via Cloudinary or base64 in storage service
 import { COLORS } from '../../constants/branding';
 
 const ImageUpload: React.FC = () => {
   const { canvas } = useMeme();
-  const { isConfigured } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -48,15 +46,8 @@ const ImageUpload: React.FC = () => {
       };
       reader.readAsDataURL(file);
 
-      // Optional: In Firebase hochladen wenn konfiguriert
-      if (isConfigured) {
-        try {
-          const cloudUrl = await uploadImage(file);
-          console.log('Image uploaded to cloud:', cloudUrl);
-        } catch (error) {
-          console.error('Cloud upload failed:', error);
-        }
-      }
+      // Optional: In Cloudinary hochladen wenn konfiguriert
+      // Note: Cloudinary upload is handled separately when saving memes
     } catch (error) {
       console.error('Error loading image:', error);
       setLoading(false);

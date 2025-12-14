@@ -1,4 +1,4 @@
-import { init, id } from '@instantdb/react';
+import { init } from '@instantdb/react';
 
 // Get App ID from environment variables
 const APP_ID = import.meta.env.VITE_INSTANTDB_APP_ID;

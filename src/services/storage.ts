@@ -112,7 +112,7 @@ export const saveMemeToCloud = async (
 // Load all memes for public feed (using query)
 export const loadAllMemes = async (): Promise<SavedMeme[]> => {
   try {
-    const data = await db.queryOnce({
+    const result: any = await db.queryOnce({
       memes: {
         $: {
           order: {
@@ -122,7 +122,8 @@ export const loadAllMemes = async (): Promise<SavedMeme[]> => {
       },
     });
 
-    return (data?.memes || []) as SavedMeme[];
+    const memes = (result?.data?.memes || result?.memes || []) as SavedMeme[];
+    return memes;
   } catch (error) {
     console.error('Error loading memes:', error);
     throw error;
@@ -132,7 +133,7 @@ export const loadAllMemes = async (): Promise<SavedMeme[]> => {
 // Load user's memes (using query)
 export const loadUserMemes = async (userId: string): Promise<SavedMeme[]> => {
   try {
-    const data = await db.queryOnce({
+    const result: any = await db.queryOnce({
       memes: {
         $: {
           where: {
@@ -145,7 +146,8 @@ export const loadUserMemes = async (userId: string): Promise<SavedMeme[]> => {
       },
     });
 
-    return (data?.memes || []) as SavedMeme[];
+    const memes = (result?.data?.memes || result?.memes || []) as SavedMeme[];
+    return memes;
   } catch (error) {
     console.error('Error loading user memes:', error);
     throw error;
