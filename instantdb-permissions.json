@@ -16,7 +16,7 @@
   },
   "inviteCodes": {
     "allow": {
-      "view": "auth.id != null",
+      "view": "true",
       "create": "auth.id != null"
     }
   },

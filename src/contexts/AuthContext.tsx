@@ -46,25 +46,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signUp = async (email: string, _password: string, inviteCode: string) => {
     try {
+      // Normalize invite code (uppercase, trim)
+      const normalizedCode = inviteCode.trim().toUpperCase();
+      
+      console.log('Checking invite code:', normalizedCode);
+      
       // First verify invite code by querying
       const result: any = await db.queryOnce({ 
         inviteCodes: {
           $: {
             where: {
-              code: inviteCode,
+              code: normalizedCode,
               used: false,
             },
           },
         },
       });
 
-      const inviteCodes = (result?.data?.inviteCodes || result?.inviteCodes || []) as any[];
+      console.log('Query result:', result);
+      
+      // Try different possible result structures
+      const inviteCodes = (
+        result?.data?.inviteCodes || 
+        result?.inviteCodes || 
+        (result?.data && Array.isArray(result.data) ? result.data : []) ||
+        []
+      ) as any[];
+      
+      console.log('Found invite codes:', inviteCodes);
       
       if (!inviteCodes || inviteCodes.length === 0) {
+        console.error('No valid invite code found for:', normalizedCode);
         throw new Error('Ungültiger oder bereits verwendeter Invite-Code');
       }
 
       const inviteCodeDoc = inviteCodes[0];
+      console.log('Using invite code:', inviteCodeDoc);
 
       // Sign in with email (InstantDB handles auth)
       // @ts-expect-error - InstantDB magic code auth only needs email initially
