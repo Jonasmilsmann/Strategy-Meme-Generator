@@ -32,19 +32,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Get auth state from InstantDB
   const { isLoading, user, error } = db.useAuth();
 
-  const signIn = async (email: string, _password: string) => {
+  const signIn = async (email: string, password: string) => {
     try {
-      // @ts-ignore - InstantDB magic code auth only needs email initially
-      await db.auth.signInWithMagicCode({ email });
-      // Note: InstantDB uses magic codes by default
-      // For production, you'd verify the code sent to email
+      // In InstantDB, password is actually the magic code
+      // First send magic code if not already sent
+      await db.auth.sendMagicCode({ email });
+      // Then sign in with the code (password field is used as magic code)
+      await db.auth.signInWithMagicCode({ email, code: password });
     } catch (error: any) {
       console.error('Error signing in:', error);
-      throw new Error(error?.message || 'Login fehlgeschlagen');
+      throw new Error(error?.message || 'Login fehlgeschlagen. Bitte prüfe deine Email für den Magic Code.');
     }
   };
 
-  const signUp = async (email: string, _password: string, inviteCode: string) => {
+  const signUp = async (email: string, password: string, inviteCode: string) => {
     try {
       // Normalize invite code (uppercase, trim)
       const normalizedCode = inviteCode.trim().toUpperCase();
@@ -83,11 +84,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const inviteCodeDoc = inviteCodes[0];
       console.log('Using invite code:', inviteCodeDoc);
 
-      // Sign in with email (InstantDB handles auth)
-      // @ts-expect-error - InstantDB magic code auth only needs email initially
-      await db.auth.signInWithMagicCode({ email });
-
-      // Mark invite code as used and create user record
+      // If password is provided, use it as magic code (user has already received it)
+      // Otherwise, send magic code first
+      if (!password || password.length < 4) {
+        // Send magic code to email
+        await db.auth.sendMagicCode({ email });
+        throw new Error('Magic Code wurde an deine Email gesendet. Bitte gib den Code im Passwort-Feld ein und versuche es erneut.');
+      }
+      
+      // Sign in with email and magic code
+      await db.auth.signInWithMagicCode({ email, code: password });
+      
+      // After successful login, mark invite code as used and create user record
       await db.transact([
         db.tx.inviteCodes[inviteCodeDoc.id].update({
           used: true,
@@ -96,13 +104,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         db.tx.users[id()].update({
           email,
           approved: true,
-          inviteCode: inviteCode,
+          inviteCode: normalizedCode,
           createdAt: Date.now(),
         }),
       ]);
     } catch (error: any) {
       console.error('Error signing up:', error);
-      throw new Error(error?.message || 'Registrierung fehlgeschlagen');
+      // Don't override the error message if it's already set
+      if (error.message && error.message.includes('Magic Code')) {
+        throw error;
+      }
+      throw new Error(error?.message || 'Registrierung fehlgeschlagen. Bitte prüfe deine Email für den Magic Code.');
     }
   };
 

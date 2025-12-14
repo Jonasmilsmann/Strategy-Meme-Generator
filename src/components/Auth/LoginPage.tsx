@@ -114,30 +114,35 @@ const LoginPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Password */}
+            {/* Password / Magic Code */}
             <div>
               <label 
                 className="block text-sm font-medium mb-2"
                 style={{ color: COLORS.text }}
               >
-                Passwort
+                {isLogin ? 'Passwort' : 'Magic Code (aus Email)'}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <FaLock className="text-gray-400" />
                 </div>
                 <input
-                  type="password"
+                  type={isLogin ? "password" : "text"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2"
                   style={{ borderColor: '#e0e0e0' }}
-                  placeholder="••••••••"
+                  placeholder={isLogin ? "••••••••" : "Code aus Email eingeben"}
                   required
                   disabled={loading || !isConfigured}
-                  minLength={6}
+                  minLength={isLogin ? 6 : 1}
                 />
               </div>
+              {!isLogin && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Nach dem Klick auf "Registrieren" wird ein Magic Code an deine Email gesendet. Gib diesen Code hier ein.
+                </p>
+              )}
             </div>
 
             {/* Invite Code (only for signup) */}
