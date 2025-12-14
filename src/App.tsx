@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { AuthProvider } from './contexts/AuthContext';
 import { MemeProvider, useMeme } from './contexts/MemeContext';
 import AppHeader from './components/Header/AppHeader';

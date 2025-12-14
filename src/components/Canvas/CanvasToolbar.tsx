@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaTrash, FaArrowUp, FaArrowDown, FaCopy, FaUndo, FaRedo } from 'react-icons/fa';
+import { FaTrash, FaArrowUp, FaArrowDown, FaCopy } from 'react-icons/fa';
 import { useMeme } from '../../contexts/MemeContext';
 import { COLORS } from '../../constants/branding';
 

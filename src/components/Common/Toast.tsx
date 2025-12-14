@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react';
 import { FaCheck, FaTimes, FaExclamationTriangle, FaInfoCircle } from 'react-icons/fa';
-import { COLORS } from '../../constants/branding';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 

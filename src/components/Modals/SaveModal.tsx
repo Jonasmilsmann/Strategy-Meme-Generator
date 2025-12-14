@@ -136,7 +136,7 @@ const SaveModal: React.FC<SaveModalProps> = ({ isOpen, onClose, onSaved }) => {
           {/* Info */}
           <div 
             className="p-3 rounded-md text-sm"
-            style={{ backgroundColor: COLORS.accent, color: COLORS.text }}
+            style={{ backgroundColor: COLORS.lightGray, color: COLORS.text }}
           >
             Dein Meme wird in Firebase Storage gespeichert und kann jederzeit geladen und geteilt werden.
           </div>

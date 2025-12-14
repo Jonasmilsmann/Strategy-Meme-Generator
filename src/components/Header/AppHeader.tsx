@@ -1,6 +1,6 @@
 import React from 'react';
 import { FaSave, FaDownload } from 'react-icons/fa';
-import { BRANDING, COLORS } from '../../constants/branding';
+import { COLORS } from '../../constants/branding';
 
 interface AppHeaderProps {
   onSave: () => void;

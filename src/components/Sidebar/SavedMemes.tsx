@@ -179,7 +179,7 @@ const SavedMemes: React.FC = () => {
                 <button
                   onClick={() => handleDownloadMeme(meme)}
                   className="flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-md text-xs font-medium transition-all hover:opacity-80"
-                  style={{ backgroundColor: COLORS.accent, color: COLORS.text }}
+                  style={{ backgroundColor: COLORS.lightGray, color: COLORS.text }}
                   title="Herunterladen"
                 >
                   <FaDownload />

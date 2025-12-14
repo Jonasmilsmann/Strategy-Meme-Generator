@@ -125,7 +125,7 @@ const DownloadModal: React.FC<DownloadModalProps> = ({ isOpen, onClose }) => {
           {/* Vorschau-Info */}
           <div 
             className="p-3 rounded-md text-sm"
-            style={{ backgroundColor: COLORS.accent, color: COLORS.text }}
+            style={{ backgroundColor: COLORS.lightGray, color: COLORS.text }}
           >
             <strong>Datei:</strong> {filename}.{format}
             <br />

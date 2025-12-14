@@ -4,7 +4,7 @@ import { useMeme } from '../../contexts/MemeContext';
 
 const MemeCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { canvas, setCanvas, setSelectedObject } = useMeme();
+  const { setCanvas, setSelectedObject } = useMeme();
 
   useEffect(() => {
     if (!canvasRef.current) return;

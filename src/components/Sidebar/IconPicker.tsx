@@ -103,34 +103,21 @@ const IconPicker: React.FC = () => {
     ? iconLibrary 
     : iconLibrary.filter(icon => icon.category === selectedCategory);
 
-  const addIconToCanvas = (IconComponent: React.ComponentType<any>, iconName: string) => {
+  const addIconToCanvas = () => {
     if (!canvas) return;
 
-    // Icon als SVG-String rendern
-    const iconSvg = `
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="${iconSize}" height="${iconSize}">
-        <path fill="${selectedColor}" d="M256 8C119 8 8 119 8 256s111 248 248 248 248-111 248-248S393 8 256 8z"/>
-      </svg>
-    `;
-
-    // Erstelle ein Fabric-Objekt aus SVG
-    // Alternativ: Text mit Icon-Font oder Path-Objekt
-    const group = new fabric.Group([
-      new fabric.Circle({
-        radius: iconSize / 2,
-        fill: selectedColor,
-        originX: 'center',
-        originY: 'center',
-      })
-    ], {
+    // Erstelle ein einfaches Circle-Objekt als Platzhalter für Icons
+    const circle = new fabric.Circle({
+      radius: iconSize / 2,
+      fill: selectedColor,
       left: canvas.width! / 2,
       top: canvas.height! / 2,
       originX: 'center',
       originY: 'center',
     });
 
-    canvas.add(group);
-    canvas.setActiveObject(group);
+    canvas.add(circle);
+    canvas.setActiveObject(circle);
     canvas.requestRenderAll();
   };
 
@@ -234,7 +221,7 @@ const IconPicker: React.FC = () => {
             return (
               <button
                 key={item.name}
-                onClick={() => addIconToCanvas(Icon, item.name)}
+                onClick={addIconToCanvas}
                 className="flex items-center justify-center p-3 rounded-lg border-2 transition-all hover:shadow-md"
                 style={{ 
                   borderColor: '#e0e0e0',

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { fabric } from 'fabric';
 import { FaPlus, FaBold, FaItalic } from 'react-icons/fa';
 import { useMeme } from '../../contexts/MemeContext';
-import { COLORS, FONTS, FONT_SIZES, TEXT_COLORS } from '../../constants/branding';
+import { COLORS, FONTS, TEXT_COLORS } from '../../constants/branding';
 
 const TextControls: React.FC = () => {
   const { canvas, selectedObject } = useMeme();

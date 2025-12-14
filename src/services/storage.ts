@@ -1,5 +1,5 @@
-import { ref, uploadBytes, getDownloadURL, listAll, deleteObject } from 'firebase/storage';
-import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, query, orderBy, Timestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { collection, addDoc, getDocs, doc, deleteDoc, query, orderBy, Timestamp } from 'firebase/firestore';
 import { storage, db, auth } from './firebase';
 
 export interface SavedMeme {
