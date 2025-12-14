@@ -1,0 +1,103 @@
+{
+  "app": {
+    "id": "93d96cc8-b601-49f2-88d2-d64745c7ba16"
+  },
+  "entities": {
+    "users": {
+      "id": {
+        "type": "string",
+        "indexed": true,
+        "unique": true
+      },
+      "email": {
+        "type": "string",
+        "indexed": true
+      },
+      "approved": {
+        "type": "boolean"
+      },
+      "inviteCode": {
+        "type": "string"
+      },
+      "createdAt": {
+        "type": "number",
+        "indexed": true
+      }
+    },
+    "inviteCodes": {
+      "id": {
+        "type": "string",
+        "indexed": true,
+        "unique": true
+      },
+      "code": {
+        "type": "string",
+        "indexed": true,
+        "unique": true
+      },
+      "used": {
+        "type": "boolean",
+        "indexed": true
+      },
+      "usedBy": {
+        "type": "string",
+        "optional": true
+      },
+      "createdBy": {
+        "type": "string"
+      },
+      "createdAt": {
+        "type": "number",
+        "indexed": true
+      }
+    },
+    "memes": {
+      "id": {
+        "type": "string",
+        "indexed": true,
+        "unique": true
+      },
+      "title": {
+        "type": "string"
+      },
+      "imageUrl": {
+        "type": "string"
+      },
+      "thumbnailUrl": {
+        "type": "string"
+      },
+      "userId": {
+        "type": "string",
+        "indexed": true
+      },
+      "userEmail": {
+        "type": "string"
+      },
+      "createdAt": {
+        "type": "number",
+        "indexed": true
+      }
+    },
+    "votes": {
+      "id": {
+        "type": "string",
+        "indexed": true,
+        "unique": true
+      },
+      "memeId": {
+        "type": "string",
+        "indexed": true
+      },
+      "userId": {
+        "type": "string",
+        "indexed": true
+      },
+      "value": {
+        "type": "number"
+      }
+    }
+  },
+  "links": {},
+  "rooms": {}
+}
+

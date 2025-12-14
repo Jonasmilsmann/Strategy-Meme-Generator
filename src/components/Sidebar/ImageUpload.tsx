@@ -3,7 +3,7 @@ import { fabric } from 'fabric';
 import { FaUpload, FaImage } from 'react-icons/fa';
 import { useMeme } from '../../contexts/MemeContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { uploadImage } from '../../services/storage';
+// Image upload now handled via Cloudinary or base64 in storage service
 import { COLORS } from '../../constants/branding';
 
 const ImageUpload: React.FC = () => {

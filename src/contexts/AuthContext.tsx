@@ -1,17 +1,23 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User } from 'firebase/auth';
-import { auth, signInAnonymousUser, isFirebaseConfigured } from '../services/firebase';
+import React, { createContext, useContext, ReactNode } from 'react';
+import { db, isInstantDBConfigured } from '../services/instantdb';
+import { id } from '@instantdb/react';
 
 interface AuthContextType {
-  user: User | null;
-  loading: boolean;
+  user: any | null;
+  isLoading: boolean;
   isConfigured: boolean;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, inviteCode: string) => Promise<void>;
+  signOut: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
-  loading: true,
+  isLoading: true,
   isConfigured: false,
+  signIn: async () => {},
+  signUp: async () => {},
+  signOut: () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -21,39 +27,89 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isConfigured] = useState(isFirebaseConfigured());
+  const isConfigured = isInstantDBConfigured();
+  
+  // Get auth state from InstantDB
+  const { isLoading, user, error } = db.useAuth();
 
-  useEffect(() => {
-    if (!isConfigured) {
-      setLoading(false);
-      return;
+  const signIn = async (email: string, password: string) => {
+    try {
+      await db.auth.signInWithMagicCode({ email });
+      // Note: InstantDB uses magic codes by default
+      // For production, you'd verify the code sent to email
+    } catch (error: any) {
+      console.error('Error signing in:', error);
+      throw new Error(error?.message || 'Login fehlgeschlagen');
     }
+  };
 
-    // Auth State Listener
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        setUser(user);
-      } else {
-        // Automatisch anonymen Benutzer anmelden
-        try {
-          const anonymousUser = await signInAnonymousUser();
-          setUser(anonymousUser);
-        } catch (error) {
-          console.error('Error signing in:', error);
-        }
+  const signUp = async (email: string, password: string, inviteCode: string) => {
+    try {
+      // First verify invite code by querying
+      const inviteCodes = await db.queryOnce({ 
+        inviteCodes: {
+          $: {
+            where: {
+              code: inviteCode,
+              used: false,
+            },
+          },
+        },
+      });
+
+      if (!inviteCodes?.inviteCodes || inviteCodes.inviteCodes.length === 0) {
+        throw new Error('Ungültiger oder bereits verwendeter Invite-Code');
       }
-      setLoading(false);
-    });
 
-    return () => unsubscribe();
-  }, [isConfigured]);
+      const inviteCodeDoc = inviteCodes.inviteCodes[0];
+
+      // Sign in with email (InstantDB handles auth)
+      await db.auth.signInWithMagicCode({ email });
+
+      // Mark invite code as used and create user record
+      await db.transact([
+        db.tx.inviteCodes[inviteCodeDoc.id].update({
+          used: true,
+          usedBy: email,
+        }),
+        db.tx.users[id()].update({
+          email,
+          approved: true,
+          inviteCode: inviteCode,
+          createdAt: Date.now(),
+        }),
+      ]);
+    } catch (error: any) {
+      console.error('Error signing up:', error);
+      throw new Error(error?.message || 'Registrierung fehlgeschlagen');
+    }
+  };
+
+  const signOut = () => {
+    try {
+      db.auth.signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
+      throw error;
+    }
+  };
+
+  if (error) {
+    console.error('Auth error:', error);
+  }
 
   return (
-    <AuthContext.Provider value={{ user, loading, isConfigured }}>
+    <AuthContext.Provider 
+      value={{ 
+        user, 
+        isLoading, 
+        isConfigured,
+        signIn,
+        signUp,
+        signOut,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
-

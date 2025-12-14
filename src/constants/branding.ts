@@ -3,6 +3,7 @@
 export const COLORS = {
   primary: '#A32020',      // Strategy& Dunkelrot
   secondary: '#DB536A',    // Strategy& Hellrot/Rosa
+  accent: '#F5F5F5',       // Accent für UI-Elemente
   gray: '#7D7D7D',         // Strategy& Grau
   text: '#000000',         // Schwarz für Text
   white: '#FFFFFF',        // Weiß

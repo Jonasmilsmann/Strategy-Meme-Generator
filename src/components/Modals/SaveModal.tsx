@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { FaTimes, FaSave, FaExclamationTriangle } from 'react-icons/fa';
 import { useMeme } from '../../contexts/MemeContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { saveMemeToCloud } from '../../services/storage';
+import { saveMemeToCloud, isCloudinaryConfigured } from '../../services/storage';
+import { isInstantDBConfigured } from '../../services/instantdb';
 import { COLORS } from '../../constants/branding';
 
 interface SaveModalProps {
@@ -13,10 +14,12 @@ interface SaveModalProps {
 
 const SaveModal: React.FC<SaveModalProps> = ({ isOpen, onClose, onSaved }) => {
   const { canvas } = useMeme();
-  const { isConfigured } = useAuth();
+  const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  const isConfigured = isInstantDBConfigured();
 
   if (!isOpen) return null;
 
@@ -26,8 +29,8 @@ const SaveModal: React.FC<SaveModalProps> = ({ isOpen, onClose, onSaved }) => {
       return;
     }
 
-    if (!isConfigured) {
-      setError('Firebase ist nicht konfiguriert. Bitte füge deine Firebase-Credentials hinzu.');
+    if (!isConfigured || !user) {
+      setError('InstantDB ist nicht konfiguriert oder du bist nicht angemeldet.');
       return;
     }
 
@@ -53,16 +56,16 @@ const SaveModal: React.FC<SaveModalProps> = ({ isOpen, onClose, onSaved }) => {
       const thumbnailBlob = await (await fetch(thumbnailDataUrl)).blob();
       const fullBlob = await (await fetch(fullDataUrl)).blob();
 
-      // Speichere in Firebase
-      await saveMemeToCloud(title, fullBlob, thumbnailBlob);
+      // Speichere in InstantDB
+      await saveMemeToCloud(title, fullBlob, thumbnailBlob, user.id, user.email || 'Unknown');
 
       setSaving(false);
       setTitle('');
       onSaved();
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving meme:', err);
-      setError('Fehler beim Speichern. Bitte versuche es erneut.');
+      setError(err.message || 'Fehler beim Speichern. Bitte versuche es erneut.');
       setSaving(false);
     }
   };
@@ -100,10 +103,21 @@ const SaveModal: React.FC<SaveModalProps> = ({ isOpen, onClose, onSaved }) => {
             >
               <FaExclamationTriangle className="flex-shrink-0 mt-1" />
               <div className="text-sm">
-                <strong>Firebase nicht konfiguriert</strong>
+                <strong>InstantDB nicht konfiguriert</strong>
                 <p className="mt-1">
-                  Bitte füge deine Firebase-Credentials in <code>src/services/firebase.ts</code> hinzu, um die Cloud-Speicherung zu nutzen.
+                  Bitte füge deine InstantDB App ID in der <code>.env</code> Datei hinzu.
                 </p>
+              </div>
+            </div>
+          )}
+
+          {!isCloudinaryConfigured() && isConfigured && (
+            <div 
+              className="p-3 rounded-md flex gap-3"
+              style={{ backgroundColor: '#d1ecf1', color: '#0c5460' }}
+            >
+              <div className="text-sm">
+                ℹ️ Cloudinary nicht konfiguriert. Bilder werden als Base64 gespeichert (nicht empfohlen für Produktion).
               </div>
             </div>
           )}
@@ -138,7 +152,7 @@ const SaveModal: React.FC<SaveModalProps> = ({ isOpen, onClose, onSaved }) => {
             className="p-3 rounded-md text-sm"
             style={{ backgroundColor: COLORS.lightGray, color: COLORS.text }}
           >
-            Dein Meme wird in Firebase Storage gespeichert und kann jederzeit geladen und geteilt werden.
+            Dein Meme wird in InstantDB gespeichert und erscheint im öffentlichen Feed.
           </div>
         </div>
 

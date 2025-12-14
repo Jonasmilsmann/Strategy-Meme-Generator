@@ -1,40 +1,35 @@
-import React, { useState, useEffect } from 'react';
-import { FaTrash, FaDownload, FaExclamationTriangle, FaSync } from 'react-icons/fa';
+import React from 'react';
+import { FaTrash, FaDownload, FaExclamationTriangle } from 'react-icons/fa';
 import { fabric } from 'fabric';
 import { useMeme } from '../../contexts/MemeContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { loadUserMemes, deleteMeme, downloadImage, SavedMeme } from '../../services/storage';
+import { db } from '../../services/instantdb';
+import { isInstantDBConfigured } from '../../services/instantdb';
+import { deleteMeme, downloadImage } from '../../services/storage';
 import { COLORS } from '../../constants/branding';
 
 const SavedMemes: React.FC = () => {
   const { canvas } = useMeme();
-  const { isConfigured } = useAuth();
-  const [memes, setMemes] = useState<SavedMeme[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const { user } = useAuth();
+  const isConfigured = isInstantDBConfigured();
 
-  const loadMemes = async () => {
-    if (!isConfigured) return;
-    
-    setLoading(true);
-    setError('');
-    
-    try {
-      const loadedMemes = await loadUserMemes();
-      setMemes(loadedMemes);
-    } catch (err) {
-      console.error('Error loading memes:', err);
-      setError('Fehler beim Laden der Memes');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Query user's memes from InstantDB
+  const { data, isLoading, error } = db.useQuery({
+    memes: {
+      $: {
+        where: {
+          userId: user?.id || '',
+        },
+        order: {
+          createdAt: 'desc',
+        },
+      },
+    },
+  });
 
-  useEffect(() => {
-    loadMemes();
-  }, [isConfigured]);
+  const memes = data?.memes || [];
 
-  const handleLoadMeme = (meme: SavedMeme) => {
+  const handleLoadMeme = (meme: any) => {
     if (!canvas) return;
 
     fabric.Image.fromURL(meme.imageUrl, (img) => {
@@ -61,14 +56,13 @@ const SavedMemes: React.FC = () => {
 
     try {
       await deleteMeme(memeId);
-      setMemes(memes.filter(m => m.id !== memeId));
     } catch (err) {
       console.error('Error deleting meme:', err);
       alert('Fehler beim Löschen des Memes');
     }
   };
 
-  const handleDownloadMeme = async (meme: SavedMeme) => {
+  const handleDownloadMeme = async (meme: any) => {
     try {
       // Download von URL
       const response = await fetch(meme.imageUrl);
@@ -94,9 +88,9 @@ const SavedMemes: React.FC = () => {
         >
           <FaExclamationTriangle className="flex-shrink-0 mt-1" />
           <div className="text-sm">
-            <strong>Firebase nicht konfiguriert</strong>
+            <strong>InstantDB nicht konfiguriert</strong>
             <p className="mt-1">
-              Bitte füge deine Firebase-Credentials in <code>src/services/firebase.ts</code> hinzu, um gespeicherte Memes anzuzeigen.
+              Bitte füge deine InstantDB App ID in der <code>.env</code> Datei hinzu.
             </p>
           </div>
         </div>
@@ -110,15 +104,6 @@ const SavedMemes: React.FC = () => {
         <h3 className="font-semibold text-lg" style={{ color: COLORS.text }}>
           Gespeicherte Memes
         </h3>
-        <button
-          onClick={loadMemes}
-          disabled={loading}
-          className="p-2 rounded-md transition-all hover:bg-gray-100 disabled:opacity-50"
-          style={{ color: COLORS.primary }}
-          title="Aktualisieren"
-        >
-          <FaSync className={loading ? 'animate-spin' : ''} />
-        </button>
       </div>
 
       {error && (
@@ -126,17 +111,17 @@ const SavedMemes: React.FC = () => {
           className="p-3 rounded-md text-sm"
           style={{ backgroundColor: '#f8d7da', color: '#721c24' }}
         >
-          {error}
+          Fehler: {error.message}
         </div>
       )}
 
-      {loading && memes.length === 0 && (
+      {isLoading && memes.length === 0 && (
         <div className="text-center py-8 text-gray-500">
           Lädt...
         </div>
       )}
 
-      {!loading && memes.length === 0 && (
+      {!isLoading && memes.length === 0 && (
         <div className="text-center py-8 text-gray-500">
           <p className="text-sm">Noch keine gespeicherten Memes</p>
           <p className="text-xs mt-2">Erstelle ein Meme und speichere es in der Cloud</p>
@@ -156,7 +141,7 @@ const SavedMemes: React.FC = () => {
               onClick={() => handleLoadMeme(meme)}
             >
               <img
-                src={meme.thumbnailUrl}
+                src={meme.thumbnailUrl || meme.imageUrl}
                 alt={meme.title}
                 className="w-full h-40 object-cover"
               />
@@ -172,7 +157,7 @@ const SavedMemes: React.FC = () => {
                 {meme.title}
               </h4>
               <p className="text-xs text-gray-500 mt-1">
-                {meme.createdAt.toDate().toLocaleDateString('de-DE')}
+                {new Date(meme.createdAt).toLocaleDateString('de-DE')}
               </p>
               
               <div className="flex gap-2 mt-3">
@@ -186,7 +171,7 @@ const SavedMemes: React.FC = () => {
                   Download
                 </button>
                 <button
-                  onClick={() => handleDeleteMeme(meme.id!)}
+                  onClick={() => handleDeleteMeme(meme.id)}
                   className="px-3 py-2 rounded-md text-xs font-medium transition-all hover:opacity-80"
                   style={{ backgroundColor: '#dc3545', color: COLORS.white }}
                   title="Löschen"
@@ -203,4 +188,3 @@ const SavedMemes: React.FC = () => {
 };
 
 export default SavedMemes;
-

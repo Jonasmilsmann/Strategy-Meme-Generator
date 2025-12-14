@@ -1,117 +1,168 @@
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { collection, addDoc, getDocs, doc, deleteDoc, query, orderBy, Timestamp } from 'firebase/firestore';
-import { storage, db, auth } from './firebase';
+import { db } from './instantdb';
+import { id } from '@instantdb/react';
+
+// Cloudinary configuration
+const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 
 export interface SavedMeme {
-  id?: string;
+  id: string;
   title: string;
   imageUrl: string;
   thumbnailUrl: string;
   userId: string;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  userEmail: string;
+  createdAt: number;
 }
 
-// Upload Bild zu Firebase Storage
-export const uploadImage = async (file: File, folder: string = 'uploads'): Promise<string> => {
+// Check if Cloudinary is configured
+export const isCloudinaryConfigured = (): boolean => {
+  return (
+    CLOUDINARY_CLOUD_NAME !== undefined &&
+    CLOUDINARY_CLOUD_NAME !== 'your_cloudinary_cloud_name' &&
+    CLOUDINARY_UPLOAD_PRESET !== undefined &&
+    CLOUDINARY_UPLOAD_PRESET !== 'your_cloudinary_upload_preset'
+  );
+};
+
+// Upload image to Cloudinary
+export const uploadToCloudinary = async (blob: Blob, filename: string): Promise<string> => {
+  if (!isCloudinaryConfigured()) {
+    throw new Error('Cloudinary ist nicht konfiguriert. Bitte füge deine Credentials in der .env Datei hinzu.');
+  }
+
+  const formData = new FormData();
+  formData.append('file', blob, filename);
+  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
   try {
-    const timestamp = Date.now();
-    const filename = `${folder}/${timestamp}_${file.name}`;
-    const storageRef = ref(storage, filename);
-    
-    await uploadBytes(storageRef, file);
-    const downloadURL = await getDownloadURL(storageRef);
-    
-    return downloadURL;
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+      {
+        method: 'POST',
+        body: formData,
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('Upload fehlgeschlagen');
+    }
+
+    const data = await response.json();
+    return data.secure_url;
   } catch (error) {
-    console.error('Error uploading image:', error);
+    console.error('Error uploading to Cloudinary:', error);
     throw error;
   }
 };
 
-// Speichere Meme in Firestore
+// Fallback: Convert blob to base64 for direct storage in InstantDB
+export const blobToBase64 = (blob: Blob): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+};
+
+// Save meme to InstantDB (with Cloudinary or base64)
 export const saveMemeToCloud = async (
   title: string,
   imageBlob: Blob,
-  thumbnailBlob: Blob
+  thumbnailBlob: Blob,
+  userId: string,
+  userEmail: string
 ): Promise<string> => {
   try {
-    const user = auth.currentUser;
-    if (!user) {
-      throw new Error('User not authenticated');
+    let imageUrl: string;
+    let thumbnailUrl: string;
+
+    // Try Cloudinary first, fallback to base64
+    if (isCloudinaryConfigured()) {
+      const timestamp = Date.now();
+      imageUrl = await uploadToCloudinary(imageBlob, `meme_${timestamp}.png`);
+      thumbnailUrl = await uploadToCloudinary(thumbnailBlob, `thumb_${timestamp}.png`);
+    } else {
+      console.warn('Cloudinary not configured, using base64 storage (not recommended for production)');
+      imageUrl = await blobToBase64(imageBlob);
+      thumbnailUrl = await blobToBase64(thumbnailBlob);
     }
 
-    // Upload Bilder
-    const timestamp = Date.now();
-    const imageFile = new File([imageBlob], `meme_${timestamp}.png`, { type: 'image/png' });
-    const thumbnailFile = new File([thumbnailBlob], `thumb_${timestamp}.png`, { type: 'image/png' });
+    // Save to InstantDB
+    const memeId = id();
+    await db.transact([
+      db.tx.memes[memeId].update({
+        title,
+        imageUrl,
+        thumbnailUrl,
+        userId,
+        userEmail,
+        createdAt: Date.now(),
+      }),
+    ]);
 
-    const imageUrl = await uploadImage(imageFile, 'memes');
-    const thumbnailUrl = await uploadImage(thumbnailFile, 'thumbnails');
-
-    // Speichere Metadaten in Firestore
-    const memeData: Omit<SavedMeme, 'id'> = {
-      title,
-      imageUrl,
-      thumbnailUrl,
-      userId: user.uid,
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
-    };
-
-    const docRef = await addDoc(collection(db, 'memes'), memeData);
-    
-    return docRef.id;
+    return memeId;
   } catch (error) {
     console.error('Error saving meme:', error);
     throw error;
   }
 };
 
-// Lade alle Memes des aktuellen Benutzers
-export const loadUserMemes = async (): Promise<SavedMeme[]> => {
+// Load all memes for public feed (using query)
+export const loadAllMemes = async (): Promise<SavedMeme[]> => {
   try {
-    const user = auth.currentUser;
-    if (!user) {
-      throw new Error('User not authenticated');
-    }
-
-    const q = query(
-      collection(db, 'memes'),
-      orderBy('createdAt', 'desc')
-    );
-    
-    const querySnapshot = await getDocs(q);
-    const memes: SavedMeme[] = [];
-    
-    querySnapshot.forEach((doc) => {
-      const data = doc.data() as Omit<SavedMeme, 'id'>;
-      if (data.userId === user.uid) {
-        memes.push({
-          id: doc.id,
-          ...data,
-        });
-      }
+    const data = await db.queryOnce({
+      memes: {
+        $: {
+          order: {
+            serverCreatedAt: 'desc',
+          },
+        },
+      },
     });
-    
-    return memes;
+
+    return (data?.memes || []) as SavedMeme[];
   } catch (error) {
     console.error('Error loading memes:', error);
     throw error;
   }
 };
 
-// Lösche Meme
+// Load user's memes (using query)
+export const loadUserMemes = async (userId: string): Promise<SavedMeme[]> => {
+  try {
+    const data = await db.queryOnce({
+      memes: {
+        $: {
+          where: {
+            userId,
+          },
+          order: {
+            serverCreatedAt: 'desc',
+          },
+        },
+      },
+    });
+
+    return (data?.memes || []) as SavedMeme[];
+  } catch (error) {
+    console.error('Error loading user memes:', error);
+    throw error;
+  }
+};
+
+// Delete meme
 export const deleteMeme = async (memeId: string): Promise<void> => {
   try {
-    await deleteDoc(doc(db, 'memes', memeId));
+    await db.transact([db.tx.memes[memeId].delete()]);
   } catch (error) {
     console.error('Error deleting meme:', error);
     throw error;
   }
 };
 
-// Lokaler Download
+// Local download
 export const downloadImage = (dataUrl: string, filename: string): void => {
   const link = document.createElement('a');
   link.download = filename;
@@ -120,4 +171,3 @@ export const downloadImage = (dataUrl: string, filename: string): void => {
   link.click();
   document.body.removeChild(link);
 };
-
