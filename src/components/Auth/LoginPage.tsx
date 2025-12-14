@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FaEnvelope, FaLock, FaTicketAlt } from 'react-icons/fa';
 import { useAuth } from '../../contexts/AuthContext';
+import { db } from '../../services/instantdb';
 import { COLORS } from '../../constants/branding';
 import LoadingSpinner from '../Common/LoadingSpinner';
 
@@ -24,7 +25,19 @@ const LoginPage: React.FC = () => {
       }
 
       if (isLogin) {
-        await signIn(email, password);
+        // If password/code provided, try to sign in with it
+        if (password && password.length > 0) {
+          try {
+            await db.auth.signInWithMagicCode({ email, code: password });
+          } catch (err: any) {
+            // If code is wrong, send new code
+            await signIn(email, password);
+            throw new Error('Ungültiger Code. Ein neuer Login-Code wurde an deine Email gesendet.');
+          }
+        } else {
+          // Otherwise just send magic code
+          await signIn(email, password);
+        }
       } else {
         if (!inviteCode.trim()) {
           throw new Error('Bitte gib einen Invite-Code ein');
@@ -114,36 +127,34 @@ const LoginPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Password / Magic Code */}
-            <div>
-              <label 
-                className="block text-sm font-medium mb-2"
-                style={{ color: COLORS.text }}
-              >
-                {isLogin ? 'Passwort' : 'Magic Code (aus Email)'}
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FaLock className="text-gray-400" />
+            {/* Password / Magic Code - Only show for login when user has code */}
+            {isLogin && (
+              <div>
+                <label 
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: COLORS.text }}
+                >
+                  Login-Code (aus Email)
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FaLock className="text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2"
+                    style={{ borderColor: '#e0e0e0' }}
+                    placeholder="Code aus Email eingeben"
+                    disabled={loading || !isConfigured}
+                  />
                 </div>
-                <input
-                  type={isLogin ? "password" : "text"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2"
-                  style={{ borderColor: '#e0e0e0' }}
-                  placeholder={isLogin ? "••••••••" : "Code aus Email eingeben"}
-                  required
-                  disabled={loading || !isConfigured}
-                  minLength={isLogin ? 6 : 1}
-                />
-              </div>
-              {!isLogin && (
                 <p className="text-xs text-gray-500 mt-1">
-                  Nach dem Klick auf "Registrieren" wird ein Magic Code an deine Email gesendet. Gib diesen Code hier ein.
+                  Klicke auf "Anmelden" um einen Login-Code an deine Email zu erhalten.
                 </p>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Invite Code (only for signup) */}
             {!isLogin && (
